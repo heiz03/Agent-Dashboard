@@ -5,11 +5,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT, STATUS_DIR, buildState, readEvents, readNexusHandoffs, clientEvents } from './state.mjs';
 
-const PORT = Number(process.env.PORT || 4327);
+// --port wins over PORT, so a second copy (e.g. the Claude preview pane) can run beside the main one.
+const argPort = process.argv.includes('--port') ? process.argv[process.argv.indexOf('--port') + 1] : null;
+const PORT = Number(argPort || process.env.PORT || 4327);
 const HOST = '127.0.0.1';
 const PUBLIC = path.join(ROOT, 'public');
 const NEXUS_POLL_MS = 30_000;
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.png': 'image/png' };
 
 fs.mkdirSync(STATUS_DIR, { recursive: true });
 

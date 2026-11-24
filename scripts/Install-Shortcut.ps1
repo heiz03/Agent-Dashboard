@@ -20,7 +20,7 @@ foreach ($lnk in $targets) {
     $s.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
     $s.Arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$start`""
     $s.WorkingDirectory = Split-Path -Parent $PSScriptRoot
-    $s.IconLocation = "$env:SystemRoot\System32\imageres.dll,109"
+    $s.IconLocation = Join-Path (Split-Path -Parent $PSScriptRoot) 'public\favicon.ico'
     $s.Description = 'Open the Agents Dashboard'
     $s.Save()
     Write-Output "Created: $lnk"

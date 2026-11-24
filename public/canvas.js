@@ -1,88 +1,137 @@
-// Workflow canvas: Josh -> Agent Review -> agents -> tools, with animated packets.
+// Workflow canvas: Josh (top) -> Agent Review -> agents -> tools, with animated packets.
+// Nodes are HTML cards raised off a tilted board (CSS 3D); wires and packets live on the
+// board as SVG. The layout is recomputed from the container width, so it fits any screen.
 (() => {
   const NS = 'http://www.w3.org/2000/svg';
-  const svg = document.getElementById('canvas');
+  const wrap = document.getElementById('stageWrap');
+  const stage = document.getElementById('stage');
+  const svg = document.getElementById('wires');
   const gEdges = document.getElementById('edges');
   const gPackets = document.getElementById('packets');
-  const gNodes = document.getElementById('nodes');
-  const COLORS = { working: '#378ADD', waiting: '#BA7517', blocked: '#E24B4A', done: '#639922', idle: 'var(--border-strong)', none: 'var(--border-strong)' };
-  const FILL = { working: 'var(--blue-bg)', waiting: 'var(--amber-bg)', blocked: 'var(--red-bg)', done: 'var(--green-bg)', idle: 'var(--surface)', none: 'var(--surface)' };
+  const nodesEl = document.getElementById('nodes');
+  const toggle = document.getElementById('view3d');
   const LABEL = { working: 'Working', waiting: 'Waiting', blocked: 'Blocked', done: 'Done', idle: 'Idle', none: 'Not set up' };
+  const MARK = { done: '✓', blocked: '!', waiting: '…' };
+  const PAD = 16, GAP = 12, NODE_H = 60, TOOLS_H = 74, ROW_GAP = 22;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
-  let layout = null; // node boxes keyed by agent key, plus josh/report
-  const paths = {};  // edge id -> SVGPathElement
+  let layout = null, layoutSig = '', last = null; // last = [state, selected, onClick]
+  const paths = {}; // edge id -> SVGPathElement
 
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const el = (tag, attrs = {}, parent) => {
     const n = document.createElementNS(NS, tag);
     for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
     if (parent) parent.appendChild(n);
     return n;
   };
-  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const clip = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s || '');
   const cx = b => b.x + b.w / 2;
 
-  function buildLayout(state) {
-    const others = state.agents.filter(a => a.key !== state.orchestrator);
-    const step = 1172 / others.length;
-    layout = {
-      josh: { x: 24, y: 28, w: 150, h: 56, title: 'Josh', sub: 'You' },
-      [state.orchestrator]: { x: 505, y: 22, w: 190, h: 68 },
-      report: { x: 1026, y: 28, w: 150, h: 56, title: 'Report', sub: 'Excel + you' },
-    };
-    others.forEach((a, i) => { layout[a.key] = { x: 14 + i * step, y: 196, w: step - 12, h: 62, agent: true }; });
+  // Agents per row by width: 8 on desktop, 4 on tablets, 2 on phones.
+  function columns(W, n) { return Math.max(1, Math.min(n, W >= 1000 ? 8 : W >= 560 ? 4 : 2)); }
 
-    gEdges.replaceChildren(); gNodes.replaceChildren();
-    const rv = layout[state.orchestrator];
-    edge('josh-review', `M174 56 L505 56`);
-    edge('review-report', `M695 56 L1026 56`);
-    for (const a of others) {
-      const b = layout[a.key], x = cx(b);
-      edge(`review-${a.key}`, `M${cx(rv)} 90 C${cx(rv)} 150 ${x} 140 ${x} 196`, a.state === 'none' ? 'tool' : '');
-      edge(`${a.key}-josh`, `M${b.x + 16} 196 C${b.x + 16} 140 ${layout.josh.x + 40} 130 ${layout.josh.x + 40} 84`, 'alert-path');
-      (a.tools || []).slice(0, 3).forEach((t, j, arr) => {
-        const tx = x + (j - (arr.length - 1) / 2) * 42, ty = 326;
-        edge(`${a.key}-tool${j}`, `M${x} 258 C${x} 290 ${tx} 290 ${tx} ${ty - 15}`, 'tool');
-        const g = el('g', { class: 'tool', id: `tool-${a.key}-${j}` }, gNodes);
-        el('circle', { cx: tx, cy: ty, r: 15 }, g);
-        const t1 = el('text', { x: tx, y: ty + 4, 'text-anchor': 'middle' }, g); t1.textContent = t[0];
-        const t2 = el('text', { x: tx, y: ty + 31, 'text-anchor': 'middle' }, g); t2.textContent = t;
-      });
+  function buildLayout(state, W) {
+    const orch = state.orchestrator;
+    const others = state.agents.filter(a => a.key !== orch);
+    const cols = columns(W, others.length);
+    const nodeW = (W - 2 * PAD - (cols - 1) * GAP) / cols;
+    const L = {};
+    // Row 1: Josh, centered at the top.
+    const topW = Math.min(220, W - 2 * PAD);
+    L.josh = { x: (W - topW) / 2, y: 18, w: topW, h: NODE_H };
+    // Row 2: Agent Review centered, Report at the right edge (side by side when narrow).
+    const y2 = L.josh.y + NODE_H + 40;
+    if (W >= 700) {
+      L[orch] = { x: (W - topW) / 2, y: y2, w: topW, h: NODE_H };
+      L.report = { x: W - PAD - 180, y: y2, w: 180, h: NODE_H };
+    } else {
+      const half = (W - 2 * PAD - GAP) / 2;
+      L[orch] = { x: PAD, y: y2, w: half, h: NODE_H };
+      L.report = { x: PAD + half + GAP, y: y2, w: half, h: NODE_H };
     }
+    // Agent rows, each with its tools underneath.
+    const y3 = y2 + NODE_H + 64;
+    others.forEach((a, i) => {
+      const r = Math.floor(i / cols), c = i % cols;
+      L[a.key] = { x: PAD + c * (nodeW + GAP), y: y3 + r * (NODE_H + TOOLS_H + ROW_GAP), w: nodeW, h: NODE_H, agent: true };
+    });
+    const rows = Math.ceil(others.length / cols);
+    L.height = y3 + rows * (NODE_H + TOOLS_H + ROW_GAP) - ROW_GAP + 8;
+    L.width = W;
+    L.tilt = W >= 1000 ? 18 : W >= 560 ? 12 : 8; // taller boards get less tilt, so the top doesn't sink away
+    return L;
   }
 
   function edge(id, d, cls = '') {
     paths[id] = el('path', { d, class: `edge ${cls}`, id: `edge-${id}` }, gEdges);
-    if (cls === 'alert-path') paths[id].style.stroke = 'transparent';
   }
 
-  function nodeBox(key, b, st, title, sub, selected, onClick) {
-    const g = el('g', { class: `node${selected ? ' sel' : ''}`, tabindex: 0, role: 'button', 'aria-label': `${title}: ${LABEL[st] || st}` }, gNodes);
-    el('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 10, fill: FILL[st] || 'var(--surface)', stroke: COLORS[st] || 'var(--border-strong)',
-      'stroke-width': st === 'idle' || st === 'none' ? 1.2 : 2, 'stroke-dasharray': st === 'none' ? '5 4' : '' }, g);
-    const t = el('text', { x: b.x + 12, y: b.y + 24, class: 'title' }, g); t.textContent = clip(title, Math.floor(b.w / 8.5));
-    const s = el('text', { x: b.x + 12, y: b.y + 44, class: 'sub' }, g); s.textContent = clip(sub, Math.floor(b.w / 6.2));
-    const ix = b.x + b.w - 14, iy = b.y + 14;
-    if (st === 'working') el('circle', { cx: ix, cy: iy, r: 6, fill: 'none', stroke: COLORS.working, 'stroke-width': 2.2, 'stroke-dasharray': '24 14', class: 'spin' }, g);
-    else if (st === 'done' || st === 'blocked' || st === 'waiting') {
-      const m = el('text', { x: ix, y: iy + 5, 'text-anchor': 'middle', style: `font-size:14px;font-weight:700;fill:${COLORS[st]}` }, g);
-      m.textContent = st === 'done' ? '✓' : st === 'blocked' ? '!' : '…';
+  function drawEdges(state) {
+    const orch = state.orchestrator, L = layout, rv = L[orch];
+    gEdges.replaceChildren();
+    for (const k of Object.keys(paths)) delete paths[k];
+    const jm = (L.josh.y + NODE_H + rv.y) / 2; // curves to Review when narrow screens put it off-center
+    edge('josh-review', `M${cx(L.josh)} ${L.josh.y + NODE_H} C${cx(L.josh)} ${jm} ${cx(rv)} ${jm} ${cx(rv)} ${rv.y}`);
+    edge('review-report', `M${rv.x + rv.w} ${rv.y + NODE_H / 2} L${L.report.x} ${rv.y + NODE_H / 2}`);
+    for (const a of state.agents) {
+      const b = L[a.key]; if (!b || !b.agent) continue;
+      const x = cx(b), top = b.y, mid = (rv.y + NODE_H + top) / 2;
+      edge(`review-${a.key}`, `M${cx(rv)} ${rv.y + NODE_H} C${cx(rv)} ${mid} ${x} ${mid} ${x} ${top}`, a.state === 'none' ? 'tool' : '');
+      // Alert wire to Josh, drawn only while the agent is blocked.
+      const jx = L.josh.x + 24, side = x < cx(L.josh) ? -1 : 1;
+      edge(`${a.key}-josh`, `M${b.x + 20} ${top} C${b.x + 20} ${top - 70} ${jx + side * 60} ${L.josh.y + NODE_H + 30} ${jx} ${L.josh.y + NODE_H}`, 'alert-path');
+      (a.tools || []).slice(0, 3).forEach((t, j, arr) => {
+        const tx = toolX(b, j, arr.length), ty = b.y + NODE_H + 30;
+        edge(`${a.key}-tool${j}`, `M${x} ${b.y + NODE_H} C${x} ${ty - 8} ${tx} ${ty - 8} ${tx} ${ty - 14}`, 'tool');
+      });
     }
-    if (onClick) { g.addEventListener('click', () => onClick(key)); g.addEventListener('keydown', e => { if (e.key === 'Enter') onClick(key); }); }
+  }
+
+  const toolX = (b, j, n) => cx(b) + (j - (n - 1) / 2) * Math.min(52, b.w / Math.max(n, 1));
+
+  function card(key, b, st, title, sub, selected, onClick, extra = '') {
+    const n = document.createElement(onClick ? 'button' : 'div');
+    if (onClick) { n.type = 'button'; n.addEventListener('click', () => onClick(key)); }
+    n.className = `node3d ${st}${selected ? ' sel' : ''}${extra}`;
+    n.style.cssText = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px`;
+    n.setAttribute('aria-label', `${title}: ${LABEL[st] || st}${sub ? ', ' + sub : ''}`);
+    const mark = st === 'working' ? '<span class="spin-ring" aria-hidden="true"></span>' : MARK[st] ? `<span class="mark" aria-hidden="true">${MARK[st]}</span>` : '';
+    n.innerHTML = `<span class="face"><span class="t-row"><span class="title">${esc(title)}</span>${mark}</span><span class="sub">${esc(sub)}</span></span>`;
+    nodesEl.appendChild(n);
   }
 
   function render(state, selected, onClick) {
-    const sig = state.agents.map(a => a.key + a.state + (a.tools || []).join()).join('|');
-    if (!layout || render.sig !== sig) { buildLayout(state); render.sig = sig; }
-    for (const g of [...gNodes.querySelectorAll('.node')]) g.remove();
-    nodeBox('josh', layout.josh, state.agents.some(a => a.state === 'blocked') ? 'blocked' : 'idle', 'Josh', state.agents.some(a => a.needsJosh) ? 'Needed by an agent' : 'You', false);
-    nodeBox('report', layout.report, 'idle', 'Report', 'Excel + you', false);
+    last = [state, selected, onClick];
+    const W = Math.max(300, wrap.clientWidth);
+    const sig = W + '|' + state.agents.map(a => a.key + (a.state === 'none') + (a.tools || []).join()).join('|');
+    if (!layout || layoutSig !== sig) {
+      layout = buildLayout(state, W); layoutSig = sig;
+      stage.style.width = W + 'px'; stage.style.height = layout.height + 'px';
+      wrap.style.height = layout.height + 'px';
+      stage.style.setProperty('--rx-base', layout.tilt + 'deg');
+      svg.setAttribute('viewBox', `0 0 ${W} ${layout.height}`);
+      svg.setAttribute('width', W); svg.setAttribute('height', layout.height);
+      drawEdges(state);
+    }
+    nodesEl.replaceChildren();
+    const L = layout, orch = state.orchestrator;
+    const needed = state.agents.some(a => a.needsJosh), blocked = state.agents.some(a => a.state === 'blocked');
+    card('josh', L.josh, blocked ? 'blocked' : 'idle', 'Josh', needed ? 'Needed by an agent' : 'You', false, null, ' person');
+    card('report', L.report, 'idle', 'Report', 'Excel and you', false, null);
     for (const a of state.agents) {
+      const b = L[a.key]; if (!b) continue;
       const step = a.section || a.task;
       const sub = a.state === 'none' ? 'Not set up' : (a.client ? `${a.client}${step ? ' · ' + step : ''}` : a.task || LABEL[a.state]);
-      nodeBox(a.key, layout[a.key], a.state, a.key === state.orchestrator ? a.name : a.short || a.name, sub, selected === a.key, onClick);
+      card(a.key, b, a.state, a.key === orch ? a.name : a.short || a.name, sub, selected === a.key, onClick);
+      if (b.agent) (a.tools || []).slice(0, 3).forEach((t, j, arr) => {
+        const d = document.createElement('div');
+        d.className = 'tool3d'; d.id = `tool-${a.key}-${j}`;
+        d.style.cssText = `left:${toolX(b, j, arr.length) - 14}px;top:${b.y + NODE_H + 16}px`;
+        d.innerHTML = `<span class="disc" aria-hidden="true">${esc(t[0])}</span><span class="tool-name">${esc(t)}</span>`;
+        nodesEl.appendChild(d);
+      });
       const alert = paths[`${a.key}-josh`];
-      if (alert) { alert.classList.toggle('alert', a.state === 'blocked'); alert.style.stroke = a.state === 'blocked' ? '' : 'transparent'; }
+      if (alert) alert.classList.toggle('alert', a.state === 'blocked');
     }
   }
 
@@ -101,17 +150,17 @@
 
   function travel(id, dir, color, ms) {
     return new Promise(resolve => {
-      const p = paths[id]; if (!p) return resolve();
+      const p = paths[id]; if (!p || !p.isConnected) return resolve();
       const len = p.getTotalLength();
-      const dot = el('circle', { r: 6, fill: color }, gPackets);
-      p.classList.add('hot'); p.style.stroke = color;
+      const dot = el('circle', { r: 6, fill: color, class: 'packet' }, gPackets);
+      p.classList.add('hot'); p.style.setProperty('--hot', color);
       const t0 = performance.now();
       (function frame(t) {
         const k = Math.min(1, (t - t0) / ms);
         const pt = p.getPointAtLength(len * (dir > 0 ? k : 1 - k));
         dot.setAttribute('cx', pt.x); dot.setAttribute('cy', pt.y);
         if (k < 1) requestAnimationFrame(frame);
-        else { dot.remove(); setTimeout(() => { p.classList.remove('hot'); if (!p.classList.contains('alert')) p.style.stroke = p.classList.contains('alert-path') ? 'transparent' : ''; }, 600); resolve(); }
+        else { dot.remove(); setTimeout(() => p.classList.remove('hot'), 600); resolve(); }
       })(t0);
     });
   }
@@ -125,6 +174,29 @@
       if (t) { t.classList.add('lit'); setTimeout(() => t.classList.remove('lit'), 1800); }
     }
   }
+
+  // 3D on/off (remembered per browser) and a gentle tilt that follows the pointer.
+  function set3d(on) {
+    document.body.classList.toggle('flat', !on);
+    toggle.setAttribute('aria-pressed', String(on));
+    toggle.textContent = on ? '3D view: on' : '3D view: off';
+    try { localStorage.setItem('agents3d', on ? '1' : '0'); } catch { /* storage blocked */ }
+  }
+  let on3d = true;
+  try { on3d = localStorage.getItem('agents3d') !== '0'; } catch { /* storage blocked */ }
+  set3d(on3d);
+  toggle.addEventListener('click', () => { on3d = !on3d; set3d(on3d); stage.style.removeProperty('--ry'); stage.style.removeProperty('--rx'); });
+  wrap.addEventListener('pointermove', e => {
+    if (!on3d || reduced.matches || e.pointerType !== 'mouse') return;
+    const r = wrap.getBoundingClientRect();
+    stage.style.setProperty('--ry', `${((e.clientX - r.left) / r.width - 0.5) * 6}deg`);
+    stage.style.setProperty('--rx', `${(layout ? layout.tilt : 18) - ((e.clientY - r.top) / r.height - 0.5) * 6}deg`);
+  });
+  wrap.addEventListener('pointerleave', () => { stage.style.removeProperty('--ry'); stage.style.removeProperty('--rx'); });
+
+  // Re-lay out when the canvas width changes.
+  let rz = null;
+  new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(() => last && render(...last), 80); }).observe(wrap);
 
   window.Canvas = { render, packet, esc };
 })();

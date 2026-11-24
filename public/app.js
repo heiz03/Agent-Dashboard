@@ -97,13 +97,16 @@
     const html = list.map(a => {
       const p = a.progress, pct = p && p.total ? Math.round(p.done / p.total * 100) : 0;
       const what = a.state === 'none' ? 'No session yet' : doing(a) || (a.state === 'done' ? 'Finished all clients' : 'No report yet');
-      const src = a.source === 'nexus' ? 'from Nexus save' : a.source === 'status' ? 'live status' : '';
+      const src = a.source === 'nexus' ? 'From Nexus save' : a.source === 'status' ? 'Live status' : 'No status yet';
+      // Every card has the same rows; the footer sits at the bottom so links line up across a row.
       return `<article class="card ${selected === a.key ? 'sel' : ''}" data-k="${a.key}">
-        <div class="row"><span class="name">${esc(a.short || a.name)}</span><span class="pill ${a.state}">${a.state === 'working' ? '<span class="pulse-dot"></span>' : ''}${LABEL[a.state]}</span></div>
+        <div class="row"><h3 class="name">${esc(a.short || a.name)}</h3><span class="pill ${a.state}">${a.state === 'working' ? '<span class="pulse-dot"></span>' : ''}${LABEL[a.state]}</span></div>
         <p title="${esc(what)}">${esc(what)}</p>
-        ${p ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}
-        <div class="meta"><span>${p ? `${p.done}/${p.total} clients` : esc(src)}</span><span>${esc(when(a.updated))}</span></div>
-        ${a.sessionId ? `<div class="meta"><a href="claude://claude.ai/epitaxy/${esc(a.sessionId)}" onclick="event.stopPropagation()">Open session ↗</a></div>` : ''}
+        <div class="card-foot">
+          <div class="bar${p ? '' : ' empty'}"><i style="width:${pct}%"></i></div>
+          <div class="meta"><span>${p ? `${p.done}/${p.total} clients` : esc(src)}</span><span>${esc(when(a.updated))}</span></div>
+          <div class="link-row">${a.sessionId ? `<a href="claude://claude.ai/epitaxy/${esc(a.sessionId)}" onclick="event.stopPropagation()">Open session ↗</a>` : ''}</div>
+        </div>
       </article>`;
     }).join('') || '<p class="muted">No agents match this filter.</p>';
     if (setHTML($('cards'), html)) $('cards').querySelectorAll('.card').forEach(c => c.onclick = () => select(c.dataset.k));
@@ -167,7 +170,7 @@
   function renderFeed() {
     setHTML($('feed'), state.feed.slice(0, 40).map(e => {
       const f = nameOf(keyOf(e.from)), t = e.to ? nameOf(keyOf(e.to)) : null;
-      return `<p class="${e.kind === 'step' ? 'step-line' : ''}"><b>${esc(f)}</b>${t ? ` → <b>${esc(t)}</b>` : ''}${e.client ? ` · ${esc(clientLabel(e.client))}` : ''}: ${esc(e.text)} <span class="src">${esc(when(e.ts))}${e.source === 'nexus' ? ' · Nexus' : ''}</span></p>`;
+      return `<p class="${e.kind === 'step' ? 'step-line' : ''}"><span class="what"><b>${esc(f)}</b>${t ? ` → <b>${esc(t)}</b>` : ''}${e.client ? ` · ${esc(clientLabel(e.client))}` : ''}: ${esc(e.text)}</span><span class="src">${esc(when(e.ts))}${e.source === 'nexus' ? ' · Nexus' : ''}</span></p>`;
     }).join('') || '<p>No activity yet.</p>');
   }
 

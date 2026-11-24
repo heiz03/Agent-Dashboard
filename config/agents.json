@@ -102,7 +102,7 @@
                    {
                        "key":  "ec",
                        "name":  "Agent Enhanced Conversion",
-                       "short":  "Enh. conv.",
+                       "short":  "Enhanced conv.",
                        "role":  "Checks Enhanced Conversions settings. EMDR is the only client allowed ON.",
                        "tools":  [
                                      "Nexus",
