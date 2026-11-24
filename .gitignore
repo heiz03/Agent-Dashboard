@@ -1,0 +1,5 @@
+# Private client list (see config/clients.example.json)
+config/clients.json
+# Local server logs
+.local/
+node_modules/

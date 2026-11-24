@@ -1,0 +1,9 @@
+{
+  "note": "Example client list. Copy to clients.json (git-ignored) and add your real clients. Row numbers match Google Ads List.xlsx.",
+  "clients": [
+    { "name": "Acme Counseling", "short": "Acme", "row": 2 },
+    { "name": "Birch Wellness Center", "short": "Birch", "row": 3 },
+    { "name": "Cedar Counseling Group", "short": "Cedar", "row": 4 },
+    { "name": "Delta Child Development", "short": "Delta", "row": 5 }
+  ]
+}

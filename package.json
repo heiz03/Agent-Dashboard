@@ -1,0 +1,13 @@
+{
+  "name": "agents-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local read-only dashboard showing what each Strativise/AdaptAbility agent session is doing.",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "test": "node --test \"tests/*.test.mjs\"",
+    "report": "node scripts/report.mjs"
+  }
+}
