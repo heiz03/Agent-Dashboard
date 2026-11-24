@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agents Dashboard</title>
+<title>Agent Command Center</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
 <link rel="stylesheet" href="styles.css">
@@ -11,60 +11,77 @@
 <body>
 <header class="top">
   <div class="top-inner">
-    <div class="brand"><img class="logo" src="icon.svg" alt="" width="28" height="28"><h1>Agents Dashboard</h1><span id="live" class="pill off">Connecting…</span></div>
-    <div class="actions">
-      <label class="replay" for="replaySel">Replay</label>
-      <select id="replaySel"><option value="">Choose a client</option></select>
-      <button id="replayBtn" type="button">Play</button>
-      <span id="updated" class="muted"></span>
+    <div class="brand">
+      <img class="logo" src="icon.svg" alt="" width="28" height="28">
+      <div>
+        <h1>Agent command center</h1>
+        <div class="sub"><span id="liveDot" class="live-dot off"></span><span id="liveText">Connecting…</span></div>
+      </div>
+    </div>
+    <div class="stats" id="stats" aria-live="off"></div>
+    <div class="clocks">
+      <div><span>Pacific</span><b id="clockPT">--</b></div>
+      <div><span>Philippines</span><b id="clockPH">--</b></div>
     </div>
   </div>
 </header>
 
 <main>
-  <section class="canvas-wrap" aria-label="Agent workflow">
-    <div class="stage-wrap" id="stageWrap">
-      <div class="stage" id="stage">
-        <svg id="wires" aria-hidden="true"><g id="edges"></g><g id="packets"></g></svg>
-        <div id="nodes"></div>
+  <section id="alerts" class="alerts" aria-live="polite" aria-label="Needs attention"></section>
+
+  <div class="row">
+    <section class="wall" aria-labelledby="wall-h">
+      <div class="section-head">
+        <h2 id="wall-h">Agents and sessions</h2>
+        <span class="muted" id="wallNote">Click a tile for details</span>
       </div>
-    </div>
-    <div class="legend">
-      <span><i class="sw working"></i>Working</span><span><i class="sw waiting"></i>Waiting</span>
-      <span><i class="sw blocked"></i>Blocked</span><span><i class="sw done"></i>Done</span>
-      <span><i class="sw idle"></i>Idle</span><span><i class="sw none"></i>Not set up</span>
-      <button id="view3d" type="button" class="view-toggle" aria-pressed="true">3D view: on</button>
-    </div>
-  </section>
-
-  <section class="panel" aria-label="What each agent is doing right now">
-    <div class="panel-head"><h2>Live now</h2><span class="muted">Client · section · what it's reading</span></div>
-    <div id="now"></div>
-  </section>
-
-  <section id="blockers" aria-live="polite"></section>
-
-  <section aria-labelledby="agents-h">
-    <div class="section-head"><h2 id="agents-h">Agents</h2><div class="filters" id="filters" role="toolbar" aria-label="Filter agents"></div></div>
-    <div id="cards" class="cards"></div>
-  </section>
-
-  <section id="detail"></section>
-
-  <div class="two-col">
-    <section class="panel">
-      <div class="panel-head"><h2>Clients by agent</h2><span id="ready" class="muted"></span></div>
-      <div class="table-wrap"><table id="grid"></table></div>
+      <div id="tiles" class="tiles"></div>
     </section>
-    <section class="panel">
-      <div class="panel-head"><h2>Activity</h2><span class="muted">Newest first</span></div>
-      <div id="feed" class="feed"></div>
+
+    <section class="panel log-panel" aria-labelledby="log-h">
+      <div class="panel-head">
+        <h2 id="log-h">Live log</h2>
+        <button type="button" id="pauseBtn" class="small">Pause</button>
+      </div>
+      <div class="chips" id="chips" role="toolbar" aria-label="Filter the log"></div>
+      <div id="log" class="log"></div>
     </section>
   </div>
+
+  <div class="row">
+    <section class="panel map-panel" aria-labelledby="map-h">
+      <div class="panel-head">
+        <h2 id="map-h">Who's talking to whom</h2>
+        <span class="replay-box">
+          <label for="replaySel" class="muted">Replay</label>
+          <select id="replaySel"><option value="">Choose a client</option></select>
+          <button id="replayBtn" type="button" class="small">Play</button>
+        </span>
+      </div>
+      <div class="map-wrap"><svg id="map" role="img" aria-label="Agents and the wires between them"></svg></div>
+    </section>
+
+    <section class="panel tl-panel" aria-labelledby="tl-h">
+      <div class="panel-head">
+        <h2 id="tl-h">Last 4 hours</h2>
+        <span class="legend" id="tlLegend"></span>
+      </div>
+      <div class="tl-wrap"><div id="timeline" class="timeline"></div></div>
+    </section>
+  </div>
+
+  <details class="panel clients-panel">
+    <summary><h2>Client results</h2><span class="muted" id="ready"></span></summary>
+    <div class="table-wrap"><table id="grid"></table></div>
+  </details>
+
   <p class="foot muted" id="foot"></p>
 </main>
 
-<script src="canvas.js"></script>
+<div id="backdrop" class="backdrop" hidden></div>
+<aside id="drawer" class="drawer" aria-label="Details" hidden></aside>
+
+<script src="map.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

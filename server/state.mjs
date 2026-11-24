@@ -154,8 +154,33 @@ function canonicalClients(map, clients) {
   return out;
 }
 
-export function buildState(nexus = readNexusHandoffs()) {
+const FRESH_MS = 12 * 3600_000; // a status report older than this no longer drives the live view
+const folder = p => (p ? String(p).split(/[\\/]/).filter(Boolean).pop() : null);
+
+// Live fields for a tile, from its session log summary (`sum`) and its status report.
+function liveView(a, status, sum, now) {
+  const fresh = status && status.updated && now - Date.parse(status.updated) < FRESH_MS;
+  const reported = fresh && (!sum || Date.parse(status.updated) >= sum.lastTs - 60_000);
+  let state = sum ? sum.state : (a.sessionId || a.sessionTitle ? 'idle' : 'none');
+  let text = sum ? sum.now : (state === 'none' ? 'Not set up' : 'No session log found');
+  if (reported && status.state === 'blocked') { state = 'needs'; text = status.needsJosh || status.task || text; }
+  if (!sum && status && !fresh && status.task) text = `Last report: ${status.task}`;
+  const where = fresh && status.client ? [status.clientKey || status.client, status.section].filter(Boolean).join(' · ') : (sum ? folder(sum.cwd) : null);
+  const sec = fresh && status.clientKey ? status.clients[status.clientKey]?.sections || {} : {};
+  const checklist = fresh && status.client ? (a.sections || []).map(s => ({ label: s, value: status.section === s ? 'cur' : sec[s] || '' })) : [];
+  return {
+    state, now: text, since: sum ? sum.since : (status?.updated ? Date.parse(status.updated) : null), where,
+    progress: fresh && status.progress ? `${status.progress.done}/${status.progress.total} clients` : null, checklist,
+    steps: sum ? sum.steps : [], spark: sum ? sum.spark : new Array(30).fill(0), segs: sum ? sum.segs : [],
+    tokensToday: sum ? sum.tokensToday : 0, shotTs: sum ? sum.shotTs : null, url: sum ? sum.url : null,
+    lastTs: sum ? sum.lastTs : null, logId: sum ? sum.id : null, cwd: sum ? sum.cwd : null,
+  };
+}
+
+// live = { agents: { key: summary }, sessions: [summary] } from the session watcher.
+export function buildState(nexus = readNexusHandoffs(), live = { agents: {}, sessions: [] }) {
   const { agents: cfg, clients } = loadConfig();
+  const now = Date.now();
   // One spelling per client, so the detail panel and feed group "NPABA" with its full name.
   const events = readEvents().map(e => e.client ? { ...e, client: canonicalClient(e.client, clients) } : e);
   const agents = cfg.agents.map(a => {
@@ -172,9 +197,18 @@ export function buildState(nexus = readNexusHandoffs()) {
       section: null, sectionStarted: null, detail: null, tab: null,
       needsJosh: null, waitingOn: null, progress: null, updated: last ? last.recorded : null, clients: {},
     };
-    return { ...a, ...base, source: status ? 'status' : (last ? 'nexus' : 'none'),
-      lastHandoff: last, handoffs: handoffs.slice(0, 5) };
+    return { ...a, ...base, kind: 'agent', source: status ? 'status' : (last ? 'nexus' : 'none'),
+      lastHandoff: last, handoffs: handoffs.slice(0, 5), live: liveView(a, status, live.agents?.[a.key], now) };
   });
+  // Other Claude sessions active recently get their own tiles.
+  const sessions = (live.sessions || []).map(s => ({
+    key: `s-${s.id}`, name: s.title || 'Untitled session', short: s.title || 'Untitled session', kind: 'session', clients: {},
+    live: { ...liveView({}, null, s, now), where: folder(s.cwd) },
+  }));
+  // One live log across every tile, newest first.
+  const log = [];
+  for (const t of [...agents, ...sessions]) for (const e of t.live.steps) log.push({ ...e, key: t.key });
+  log.sort((x, y) => y.ts - x.ts);
 
   // Nexus saves join the feed so it isn't empty before agents report.
   const nexusEvents = [];
@@ -185,6 +219,6 @@ export function buildState(nexus = readNexusHandoffs()) {
   const feed = [...events.filter(e => e.kind !== 'step'), ...steps, ...nexusEvents]
     .sort((x, y) => Date.parse(y.ts || 0) - Date.parse(x.ts || 0)).slice(0, 60);
 
-  return { generated: new Date().toISOString(), orchestrator: cfg.orchestrator, agents, clients, feed,
-    statusDir: STATUS_DIR, nexusDir: NEXUS_DIR };
+  return { generated: new Date().toISOString(), orchestrator: cfg.orchestrator, agents, sessions, log: log.slice(0, 150),
+    clients, feed, statusDir: STATUS_DIR, nexusDir: NEXUS_DIR };
 }

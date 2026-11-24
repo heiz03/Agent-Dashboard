@@ -1,157 +1,166 @@
 {
-    "orchestrator":  "review",
-    "agents":  [
-                   {
-                       "key":  "review",
-                       "name":  "Agent Review",
-                       "short":  "Review",
-                       "role":  "Waits until the five setup agents finish a client, checks their work against the SOP, writes True/False to Google Ads List.xlsx and reports to Josh.",
-                       "tools":  [
-                                     "Nexus",
-                                     "Excel"
-                                 ],
-                       "sessionId":  "local_3a3630d9-7858-4452-a57d-b4408294d034",
-                       "topicPattern":  "^Agent Review",
-                       "sections":  [
-                                        "Collect results",
-                                        "Cross-check SOP",
-                                        "Report"
-                                    ]
-                   },
-                   {
-                       "key":  "ads",
-                       "name":  "Agent Google Ads",
-                       "short":  "Google Ads",
-                       "role":  "Checks conversion actions, goals, bidding and call assets.",
-                       "tools":  [
-                                     "Nexus",
-                                     "Ads"
-                                 ],
-                       "setup":  true,
-                       "sessionId":  "local_670afe7c-07b8-4930-bc26-2989e6acf3eb",
-                       "topicPattern":  "^Agent (Google )?Ads",
-                       "sections":  [
-                                        "Conversion actions",
-                                        "Goals",
-                                        "Campaign goals",
-                                        "Values and settings",
-                                        "Networks",
-                                        "Call assets"
-                                    ]
-                   },
-                   {
-                       "key":  "crm",
-                       "name":  "Agent CRM",
-                       "short":  "CRM",
-                       "role":  "Checks GHL forms, calendars, workflows, numbers and number pools.",
-                       "tools":  [
-                                     "Nexus",
-                                     "GHL"
-                                 ],
-                       "setup":  true,
-                       "sessionId":  "local_d2fd3374-c124-41c9-804f-5d9839047ca0",
-                       "topicPattern":  "^Agent CRM",
-                       "sections":  [
-                                        "Forms",
-                                        "Calendars",
-                                        "Workflows",
-                                        "Numbers",
-                                        "Number pool"
-                                    ]
-                   },
-                   {
-                       "key":  "gtm",
-                       "name":  "Agent GTM",
-                       "short":  "GTM",
-                       "role":  "Checks GTM containers, tags and triggers against the SOP.",
-                       "tools":  [
-                                     "Nexus",
-                                     "GTM"
-                                 ],
-                       "setup":  true,
-                       "sessionId":  "local_8ed0713e-666b-4b1b-8972-7be0d7340f50",
-                       "topicPattern":  "^Agent GTM",
-                       "sections":  [
-                                        "Container",
-                                        "Google tag",
-                                        "Conversion Linker",
-                                        "Click to call",
-                                        "Form fill",
-                                        "Calendar booking",
-                                        "Live site"
-                                    ]
-                   },
-                   {
-                       "key":  "ga4",
-                       "name":  "Agent GA4",
-                       "short":  "GA4",
-                       "role":  "Checks the GA4 stream, lead events and Ads links.",
-                       "tools":  [
-                                     "Sentinel",
-                                     "GA4"
-                                 ],
-                       "setup":  true,
-                       "sessionId":  "local_d4d9b63c-099a-4244-b1b8-305a5739a026",
-                       "topicPattern":  "^Agent GA4",
-                       "sections":  [
-                                        "Data stream",
-                                        "Key events",
-                                        "Ads link"
-                                    ]
-                   },
-                   {
-                       "key":  "ec",
-                       "name":  "Agent Enhanced Conversion",
-                       "short":  "Enhanced conv.",
-                       "role":  "Checks Enhanced Conversions settings. EMDR is the only client allowed ON.",
-                       "tools":  [
-                                     "Nexus",
-                                     "Ads"
-                                 ],
-                       "setup":  true,
-                       "sessionId":  "local_ea13028d-c9de-46b2-87c4-ed9694388cc5",
-                       "topicPattern":  "^(Agent (EC|Enhanced)|EC review)",
-                       "sections":  [
-                                        "Ads EC setting",
-                                        "EC for leads",
-                                        "Tag user data"
-                                    ]
-                   },
-                   {
-                       "key":  "dev",
-                       "name":  "Agent Developer",
-                       "short":  "Developer",
-                       "role":  "Fixes client site code in GitHub web.",
-                       "tools":  [
-                                     "GitHub",
-                                     "Crawler"
-                                 ],
-                       "sessionId":  "local_9f3b8ade-5cfd-4d41-b092-720b3b30ea17",
-                       "topicPattern":  "^Agent Dev"
-                   },
-                   {
-                       "key":  "a2p",
-                       "name":  "Agent A2P",
-                       "short":  "A2P",
-                       "role":  "Prepares and submits A2P 10DLC registrations and fixes the site items that block approval.",
-                       "tools":  [
-                                     "Nexus",
-                                     "GHL"
-                                 ],
-                       "sessionId":  "local_853aad54-ccdf-447c-8129-bcea856cc2b2",
-                       "topicPattern":  "A2P"
-                   },
-                   {
-                       "key":  "gsc",
-                       "name":  "Agent GSC",
-                       "short":  "GSC",
-                       "role":  "Search Console checks. Not set up yet.",
-                       "tools":  [
-                                     "Sentinel",
-                                     "Crawler"
-                                 ],
-                       "sessionId":  null,
-                       "topicPattern":  "^Agent GSC"
-                   }
-               ]
+  "orchestrator": "review",
+  "agents": [
+    {
+      "key": "review",
+      "name": "Agent Review",
+      "short": "Review",
+      "role": "Waits until the five setup agents finish a client, checks their work against the SOP, writes True/False to Google Ads List.xlsx and reports to Josh.",
+      "tools": [
+        "Nexus",
+        "Excel"
+      ],
+      "sessionId": "local_3a3630d9-7858-4452-a57d-b4408294d034",
+      "topicPattern": "^Agent Review",
+      "sections": [
+        "Collect results",
+        "Cross-check SOP",
+        "Report"
+      ],
+      "sessionTitle": "Agent Review setup validation"
+    },
+    {
+      "key": "ads",
+      "name": "Agent Google Ads",
+      "short": "Google Ads",
+      "role": "Checks conversion actions, goals, bidding and call assets.",
+      "tools": [
+        "Nexus",
+        "Ads"
+      ],
+      "setup": true,
+      "sessionId": "local_670afe7c-07b8-4930-bc26-2989e6acf3eb",
+      "topicPattern": "^Agent (Google )?Ads",
+      "sections": [
+        "Conversion actions",
+        "Goals",
+        "Campaign goals",
+        "Values and settings",
+        "Networks",
+        "Call assets"
+      ],
+      "sessionTitle": "Agent Google Ads setup"
+    },
+    {
+      "key": "crm",
+      "name": "Agent CRM",
+      "short": "CRM",
+      "role": "Checks GHL forms, calendars, workflows, numbers and number pools.",
+      "tools": [
+        "Nexus",
+        "GHL"
+      ],
+      "setup": true,
+      "sessionId": "local_d2fd3374-c124-41c9-804f-5d9839047ca0",
+      "topicPattern": "^Agent CRM",
+      "sections": [
+        "Forms",
+        "Calendars",
+        "Workflows",
+        "Numbers",
+        "Number pool"
+      ],
+      "sessionTitle": "Agent CRM setup"
+    },
+    {
+      "key": "gtm",
+      "name": "Agent GTM",
+      "short": "GTM",
+      "role": "Checks GTM containers, tags and triggers against the SOP.",
+      "tools": [
+        "Nexus",
+        "GTM"
+      ],
+      "setup": true,
+      "sessionId": "local_8ed0713e-666b-4b1b-8972-7be0d7340f50",
+      "topicPattern": "^Agent GTM",
+      "sections": [
+        "Container",
+        "Google tag",
+        "Conversion Linker",
+        "Click to call",
+        "Form fill",
+        "Calendar booking",
+        "Live site"
+      ],
+      "sessionTitle": "Agent GTM setup"
+    },
+    {
+      "key": "ga4",
+      "name": "Agent GA4",
+      "short": "GA4",
+      "role": "Checks the GA4 stream, lead events and Ads links.",
+      "tools": [
+        "Sentinel",
+        "GA4"
+      ],
+      "setup": true,
+      "sessionId": "local_d4d9b63c-099a-4244-b1b8-305a5739a026",
+      "topicPattern": "^Agent GA4",
+      "sections": [
+        "Data stream",
+        "Key events",
+        "Ads link"
+      ],
+      "sessionTitle": "Agent GA4 setup"
+    },
+    {
+      "key": "ec",
+      "name": "Agent Enhanced Conversion",
+      "short": "Enhanced conv.",
+      "role": "Checks Enhanced Conversions settings. EMDR is the only client allowed ON.",
+      "tools": [
+        "Nexus",
+        "Ads"
+      ],
+      "setup": true,
+      "sessionId": "local_ea13028d-c9de-46b2-87c4-ed9694388cc5",
+      "topicPattern": "^(Agent (EC|Enhanced)|EC review)",
+      "sections": [
+        "Ads EC setting",
+        "EC for leads",
+        "Tag user data"
+      ],
+      "sessionTitle": "Agent Enhanced Conversion"
+    },
+    {
+      "key": "dev",
+      "name": "Agent Developer",
+      "short": "Developer",
+      "role": "Fixes client site code in GitHub web.",
+      "tools": [
+        "GitHub",
+        "Crawler"
+      ],
+      "sessionId": "local_9f3b8ade-5cfd-4d41-b092-720b3b30ea17",
+      "topicPattern": "^Agent Dev",
+      "sessionTitle": "Agent Developer setup"
+    },
+    {
+      "key": "a2p",
+      "name": "Agent A2P",
+      "short": "A2P",
+      "role": "Prepares and submits A2P 10DLC registrations and fixes the site items that block approval.",
+      "tools": [
+        "Nexus",
+        "GHL"
+      ],
+      "sessionId": "local_853aad54-ccdf-447c-8129-bcea856cc2b2",
+      "topicPattern": "A2P",
+      "sessionTitle": "A2P registration"
+    },
+    {
+      "key": "gsc",
+      "name": "Agent GSC",
+      "short": "GSC",
+      "role": "Search Console checks. Not set up yet.",
+      "tools": [
+        "Sentinel",
+        "Crawler"
+      ],
+      "sessionId": null,
+      "topicPattern": "^Agent GSC"
+    }
+  ],
+  "liveWindowHours": 3
 }
