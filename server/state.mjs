@@ -61,7 +61,7 @@ export function readStatus(key) {
   };
 }
 
-export function readEvents() {
+export function readEvents(limit = MAX_EVENTS) {
   let text = '';
   try { text = fs.readFileSync(EVENTS_FILE, 'utf8'); } catch { return []; }
   const out = [];
@@ -76,7 +76,7 @@ export function readEvents() {
       });
     } catch { /* skip a malformed line */ }
   }
-  return out.slice(-MAX_EVENTS);
+  return limit ? out.slice(-limit) : out;
 }
 
 // Parses a Nexus handoff: frontmatter fields plus the "Next action" section.
@@ -139,6 +139,15 @@ export function canonicalClient(name, clients) {
   return pre.length === 1 ? pre[0].name : name;
 }
 
+// Every logged event for one client (any spelling agents used), oldest first.
+export function clientEvents(name) {
+  const { clients } = loadConfig();
+  const want = canonicalClient(name, clients);
+  if (!want) return [];
+  return readEvents(0).filter(e => e.client && canonicalClient(e.client, clients) === want)
+    .map(e => ({ ...e, client: want }));
+}
+
 function canonicalClients(map, clients) {
   const out = {};
   for (const [k, v] of Object.entries(map || {})) out[canonicalClient(k, clients)] = v;
@@ -147,7 +156,8 @@ function canonicalClients(map, clients) {
 
 export function buildState(nexus = readNexusHandoffs()) {
   const { agents: cfg, clients } = loadConfig();
-  const events = readEvents();
+  // One spelling per client, so the detail panel and feed group "NPABA" with its full name.
+  const events = readEvents().map(e => e.client ? { ...e, client: canonicalClient(e.client, clients) } : e);
   const agents = cfg.agents.map(a => {
     const re = a.topicPattern ? new RegExp(a.topicPattern, 'i') : null;
     const handoffs = re ? nexus.filter(h => re.test(h.topic)) : [];

@@ -104,3 +104,18 @@ test('state merges status files with Nexus fallback', () => {
   assert.equal(gsc.state, 'none');
   assert.ok(st.feed.some(f => f.source === 'nexus'));
 });
+
+test('replay events and feed group every spelling of a client', async () => {
+  const { clientEvents, loadConfig } = await import('../server/state.mjs');
+  const c = loadConfig().clients[0];
+  const line = (client, text, kind = 'message') => JSON.stringify({ ts: new Date().toISOString(), from: 'ads', client, text, kind });
+  fs.writeFileSync(path.join(process.env.AGENTS_STATUS_DIR, 'events.jsonl'),
+    [line(c.short || c.name, 'one'), line(c.name.toLowerCase(), 'two'), line('Unknown Co', 'other'), line(c.name, 'three', 'step')].join('\n') + '\n');
+  const evs = clientEvents(c.short || c.name);
+  assert.deepEqual(evs.map(e => e.text), ['one', 'two', 'three']);
+  assert.ok(evs.every(e => e.client === c.name));
+  assert.deepEqual(clientEvents(''), []);
+  const feedClients = buildState([]).feed.filter(e => e.source === 'status').map(e => e.client);
+  assert.ok(feedClients.includes('Unknown Co'));
+  assert.equal(feedClients.filter(n => n === c.name).length, 3);
+});

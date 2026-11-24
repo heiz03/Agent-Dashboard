@@ -76,6 +76,7 @@ main { max-width: 1600px; margin: 0 auto; padding: 16px clamp(12px, 2vw, 32px) 3
 .banner { border-radius: var(--radius); padding: 10px 14px; animation: drop .4s ease; } @keyframes drop { from { opacity: 0; transform: translateY(-6px); } }
 .banner.bad { background: var(--red-bg); color: var(--red-tx); } .banner.good { background: var(--green-bg); color: var(--green-tx); font-size: 13px; }
 .banner b { font-weight: 600; } .banner ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
+.banner .old { opacity: .8; font-size: 12px; }
 
 .filters { display: flex; gap: 6px; margin: 14px 0 10px; flex-wrap: wrap; }
 .filters button { font-size: 12px; padding: 4px 12px; } .filters button.on { background: var(--surface-2); border-color: var(--text); }

@@ -3,7 +3,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, STATUS_DIR, buildState, readEvents, readNexusHandoffs } from './state.mjs';
+import { ROOT, STATUS_DIR, buildState, readEvents, readNexusHandoffs, clientEvents } from './state.mjs';
 
 const PORT = Number(process.env.PORT || 4327);
 const HOST = '127.0.0.1';
@@ -56,7 +56,14 @@ const server = http.createServer((req, res) => {
     req.on('close', () => { clearInterval(ping); clients.delete(res); });
     return;
   }
-  const rel = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
+  if (url.pathname === '/api/events') {
+    // Full logged history for one client, used by Replay.
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify(clientEvents(url.searchParams.get('client') || '')));
+  }
+  let rel;
+  try { rel = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, ''); }
+  catch { res.writeHead(400); return res.end('Bad request'); } // malformed %-escape must not crash the server
   const file = path.resolve(PUBLIC, rel);
   if (!file.startsWith(PUBLIC + path.sep)) { res.writeHead(403); return res.end(); }
   fs.readFile(file, (err, buf) => {

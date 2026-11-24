@@ -7,6 +7,7 @@
   const FINISHED = new Set(['done', 'mistake', 'skipped']);
   const ACTIVE = new Set(['working', 'blocked', 'waiting']);
   const STALE_MS = 5 * 60_000; // a working agent silent this long gets flagged
+  const OLD_MS = 6 * 3600_000; // a waiting or blocked status this old may no longer be true
   const SEC_LABEL = { ok: 'OK', issue: 'Issue', working: 'Checking', skip: 'Skipped' };
   let state = null, filter = 'all', selected = null, openClient = null;
   const queue = []; let playing = false;
@@ -34,7 +35,11 @@
   const short = c => c.short || c.name;
   function cellFor(a, c) { return a.clients[c.name] || a.clients[short(c)] || null; }
   const clientOf = name => state.clients.find(c => c.name === name || short(c) === name);
-  const stale = a => a.state === 'working' && a.updated && Date.now() - Date.parse(a.updated) > STALE_MS;
+  const age = a => a.updated ? Date.now() - Date.parse(a.updated) : 0;
+  const stale = a => (a.state === 'working' && age(a) > STALE_MS) || (['waiting', 'blocked'].includes(a.state) && age(a) > OLD_MS);
+  // "No update 7m" for recent times, "No update since Nov 11, 6:09 AM PT" for older ones.
+  const noUpdate = ts => { const w = when(ts); return w.endsWith(' ago') ? `No update ${w.replace(' ago', '')}` : `No update since ${w}`; };
+  const clientLabel = name => { const c = name && clientOf(name); return c ? short(c) : name; };
   const doing = a => [a.client, a.section || a.task].filter(Boolean).join(' · ');
 
   // Section chips for one agent on one client: done, issue, current or not started.
@@ -64,7 +69,7 @@
         <div class="now-what"><div class="now-client">${c ? esc(short(c)) : esc(a.client || 'No client yet')}${pos ? ` <span class="muted">client ${pos}</span>` : ''}${p ? ` <span class="muted">· ${p}</span>` : ''}</div>
           ${stepper(a, c)}
           <div class="muted">${esc(a.needsJosh ? 'Needs you: ' + a.needsJosh : a.detail || a.task || '')}${a.tab ? ` · tab ${esc(a.tab)}` : ''}</div></div>
-        <div class="now-when">${quiet ? `<span class="pill waiting">No update ${esc(when(a.updated).replace(' ago', ''))}</span>` : `<span class="muted">${esc(when(a.updated))}</span>`}
+        <div class="now-when">${quiet ? `<span class="pill waiting">${esc(noUpdate(a.updated))}</span>` : `<span class="muted">${esc(when(a.updated))}</span>`}
           ${a.sectionStarted && a.section ? `<span class="muted">on section ${esc(when(a.sectionStarted).replace(' ago', ''))}</span>` : ''}</div>
       </div>`;
     }).join('') || '<p class="muted">No agent is working right now.</p>';
@@ -74,7 +79,7 @@
   function renderBlockers() {
     const items = state.agents.filter(a => a.state === 'blocked' || a.needsJosh);
     setHTML($('blockers'), items.length
-      ? `<div class="banner bad"><b>⚠ Waiting on you (${items.length})</b><ul>${items.map(a => `<li><b>${esc(a.short || a.name)}</b>${a.client ? ' · ' + esc(a.client) : ''}: ${esc(a.needsJosh || a.task || 'Blocked')}</li>`).join('')}</ul></div>`
+      ? `<div class="banner bad"><b>⚠ Waiting on you (${items.length})</b><ul>${items.map(a => `<li><b>${esc(a.short || a.name)}</b>${a.client ? ' · ' + esc(a.client) : ''}: ${esc(a.needsJosh || a.task || 'Blocked')}${stale(a) ? ` <i class="old">(${esc(noUpdate(a.updated))}: may be out of date)</i>` : ''}</li>`).join('')}</ul></div>`
       : `<div class="banner good">✓ Nothing waiting on you</div>`);
   }
 
@@ -162,7 +167,7 @@
   function renderFeed() {
     setHTML($('feed'), state.feed.slice(0, 40).map(e => {
       const f = nameOf(keyOf(e.from)), t = e.to ? nameOf(keyOf(e.to)) : null;
-      return `<p class="${e.kind === 'step' ? 'step-line' : ''}"><b>${esc(f)}</b>${t ? ` → <b>${esc(t)}</b>` : ''}${e.client ? ` · ${esc(e.client)}` : ''}: ${esc(e.text)} <span class="src">${esc(when(e.ts))}${e.source === 'nexus' ? ' · Nexus' : ''}</span></p>`;
+      return `<p class="${e.kind === 'step' ? 'step-line' : ''}"><b>${esc(f)}</b>${t ? ` → <b>${esc(t)}</b>` : ''}${e.client ? ` · ${esc(clientLabel(e.client))}` : ''}: ${esc(e.text)} <span class="src">${esc(when(e.ts))}${e.source === 'nexus' ? ' · Nexus' : ''}</span></p>`;
     }).join('') || '<p>No activity yet.</p>');
   }
 
@@ -185,11 +190,16 @@
     playing = false;
   }
 
-  $('replayBtn').onclick = () => {
+  // Replays the client's full logged history (messages and results; quiet section steps are skipped).
+  $('replayBtn').onclick = async () => {
     const name = $('replaySel').value; if (!name || !state) return;
-    const c = state.clients.find(x => x.name === name);
-    const evs = state.feed.filter(e => e.source === 'status' && e.client && [c.name, short(c)].includes(e.client)).reverse();
-    if (!evs.length) { $('replayBtn').textContent = 'No events'; setTimeout(() => $('replayBtn').textContent = 'Play', 1500); return; }
+    const btn = $('replayBtn');
+    const flash = t => { btn.textContent = t; setTimeout(() => btn.textContent = 'Play', 1500); };
+    let evs = [];
+    try { evs = (await (await fetch('/api/events?client=' + encodeURIComponent(name))).json()).filter(e => e.kind !== 'step'); }
+    catch { return flash('Failed'); }
+    if (!evs.length) return flash('No events');
+    flash(`${evs.length} events`);
     queue.push(...evs); drain();
   };
 
